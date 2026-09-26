@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>ogu — claim a username</title>
+  <link rel="stylesheet" href="/ogu.css">
+  <style>:root{<%= themeVars %>}</style>
+</head>
+<body data-theme="<%= theme %>">
+  <header class="nav">
+    <a class="logo" href="/">OGU</a>
+    <nav class="navlinks">
+      <a href="#features">Features</a>
+      <a href="/directory">Handles</a>
+      <a href="/leaderboard">Leaderboard</a>
+      <a href="<%= discord %>" rel="noopener">Discord</a>
+      <% if (!user) { %><a href="/login">Log in</a><% } %>
+    </nav>
+    <span class="spacer"></span>
+    <% if (user) { %>
+      <a class="pill mine" href="/u/<%= user.username %>"><%= user.username %></a>
+    <% } else { %>
+      <a class="pill solid" href="/signup">Sign up</a>
+    <% } %>
+  </header>
+
+  <main class="hero-wrap">
+    <section class="hero">
+      <h1>Names get taken.<br>Handles get owned.</h1>
+      <p class="sub">
+        ogu is chat, clips, and your own server, built around handles that are actually yours.<br>
+        Claim what is open, buy what is not, sell when you are done with it.
+      </p>
+      <div class="hero-btns">
+        <a class="pill big mine" href="/signup">Claim your username →</a>
+        <a class="pill big ghost" href="/login">Log in</a>
+      </div>
+      <p class="fine">Free to join. iOS, Android, and web.</p>
+    </section>
+  </main>
+
+  <section class="feats" id="features">
+    <div class="feats-inner">
+      <div>
+        <h3>Pick how it looks</h3>
+        <p>Seven themes and gradients you can switch off in settings. Your theme follows you onto every page.</p>
+      </div>
+      <div>
+        <h3>Earn without grinding</h3>
+        <p>Five credits a day just for showing up, plus a small daily word puzzle. Badges and animated upgrades come out of that.</p>
+      </div>
+      <div>
+        <h3>Settle it properly</h3>
+        <p>Trading a handle? Open a ticket — it becomes its own page. Three seats, that is it.</p>
+      </div>
+    </div>
+  </section>
+</body>
+</html>

@@ -1,0 +1,92 @@
+/* landing.css — strona główna w stylu zrzutu: duży nagłówek, pigułkowe
+   przyciski, ciemne tło. Dekoracje są rysowane (SVG), nie emoji. */
+
+:root { --accent-grad: var(--accent); }
+
+body { overflow-x: hidden; }
+
+/* subtelne ziarno zamiast płaskiego tła */
+.grain {
+  position: fixed; inset: 0; pointer-events: none; z-index: 0; opacity: .5;
+  background:
+    radial-gradient(900px 500px at 50% -10%, rgba(255,255,255,.05), transparent 60%),
+    radial-gradient(700px 400px at 10% 110%, rgba(255,255,255,.03), transparent 60%);
+}
+
+/* ---------- nawigacja ---------- */
+.nav {
+  position: relative; z-index: 5;
+  display: flex; align-items: center; gap: 26px;
+  max-width: 1100px; margin: 0 auto; padding: 18px 24px;
+}
+.logo { font-weight: 800; letter-spacing: .14em; font-size: 15px; color: var(--text); }
+.logo:hover { text-decoration: none; }
+.navlinks { display: flex; gap: 22px; align-items: center; }
+.navlinks a { font-size: 14px; color: var(--text); opacity: .78; }
+.navlinks a:hover { opacity: 1; text-decoration: none; }
+.nav .spacer { flex: 1; }
+.nav-icon {
+  display: grid; place-items: center; width: 34px; height: 34px;
+  border-radius: 50%; opacity: .7;
+}
+.nav-icon:hover { opacity: 1; }
+.nav-icon svg { width: 19px; height: 19px; fill: none; stroke: currentColor; stroke-width: 1.6; }
+.nav-icon svg circle { fill: currentColor; stroke: none; }
+
+.pill {
+  display: inline-flex; align-items: center; gap: 8px;
+  padding: 10px 20px; border-radius: 999px;
+  font-size: 14px; font-weight: 600;
+  border: 1px solid rgba(255,255,255,.14);
+  color: var(--text); background: transparent;
+  transition: .16s ease;
+}
+.pill:hover { text-decoration: none; transform: translateY(-1px); }
+.pill.solid {
+  background: var(--text); color: var(--bg); border-color: transparent;
+}
+.pill.ghost { background: transparent; }
+.pill.ghost:hover { background: rgba(255,255,255,.06); }
+.pill.big { padding: 14px 30px; font-size: 15px; }
+.pill.big.solid, .hero-btns .pill:first-child {
+  background: var(--accent-grad); color: #08151a; border-color: transparent;
+}
+.arrow { font-size: 16px; line-height: 1; }
+
+/* ---------- nagłówek ---------- */
+.hero-wrap { position: relative; z-index: 2; padding: 40px 24px 10px; }
+.hero { max-width: 760px; margin: 0 auto; text-align: center; }
+.hero h1 {
+  margin: 0 0 22px;
+  font-size: clamp(38px, 6.2vw, 78px);
+  line-height: 1.04;
+  font-weight: 800;
+  letter-spacing: -.02em;
+}
+.hero .sub { margin: 0 auto 30px; max-width: 640px; font-size: 16px; opacity: .72; line-height: 1.6; }
+.hero-btns { display: flex; gap: 14px; justify-content: center; flex-wrap: wrap; }
+.hero .fine { margin-top: 22px; font-size: 13px; opacity: .5; }
+
+/* ---------- dekoracje jesienno-halloweenowe ---------- */
+.dec {
+  position: fixed; pointer-events: none; user-select: none; z-index: 1;
+  opacity: .17; stroke: none;
+}
+.dec path, .dec ellipse, .dec circle { fill: currentColor; }
+.dec .line, .dec .cut { fill: none; stroke: var(--bg); stroke-width: 2.4; }
+.dec .stem { fill: none; stroke: currentColor; stroke-width: 3; }
+.dec .cut { stroke: var(--bg); }
+
+.dec-pumpkin { top: 96px;  left: 5%;  width: 62px; color: #ff8a2b; }
+.dec-web     { top: 0;     right: 0; width: 150px; color: #cfd6dd; opacity: .1; }
+.dec-leaf    { bottom: 8%; left: 7%;  width: 54px; color: #e0a03a; }
+.dec-skull   { bottom: 10%; right: 7%; width: 50px; color: #dfe3e6; opacity: .13; }
+.dec-bat     { top: 210px; right: 12%; width: 76px; color: #b9a7c9; opacity: .15; }
+
+@media (max-width: 900px) {
+  .dec { display: none; }
+  .navlinks { gap: 16px; }
+}
+@media (max-width: 640px) {
+  .navlinks a:not(:last-child) { display: none; }
+}

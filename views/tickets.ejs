@@ -1,0 +1,161 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Tickets — ogu</title>
+  <link rel="stylesheet" href="/ogu.css">
+  <style>:root{<%= themeVars %>}</style>
+</head>
+<body data-theme="<%= theme %>">
+  
+  
+
+  <div class="shell" style="max-width:720px">
+    <header class="topbar">
+      <a class="brand" href="/">ogu</a>
+      <span class="spacer"></span>
+      <% if (user) { %>
+        <a href="/u/<%= user.username %>"><%= user.username %></a>
+        <a href="/settings">settings</a>
+      <% } else { %><a href="/login">log in</a><% } %>
+    </header>
+
+    <% if (!user) { %>
+      <section class="panel"><p>Log in to open a ticket.</p><a class="btn primary" href="/login">Log in</a></section>
+    <% } else { %>
+
+    <section class="panel">
+      <h2 style="margin-top:0">Open a ticket</h2>
+      <p class="muted">
+        Tickets hold three people including x. Use one for a trade, to ask for a middleman,
+        or for anything a listing can't cover.
+      </p>
+
+      <label for="subject">Subject</label>
+      <input id="subject" maxlength="80" placeholder="Trading my handle for yours">
+
+      <label for="kind">Type</label>
+      <select id="kind">
+        <option value="general">General</option>
+        <option value="trade">Trade usernames</option>
+        <option value="middleman">Ask for a middleman</option>
+        <option value="listing">Listing question</option>
+      </select>
+
+      <label for="with">Invite up to two people (optional, comma separated)</label>
+      <input id="with" placeholder="someone, someone.else">
+
+      <div class="err" id="err"></div>
+      <button class="primary" id="open" style="margin-top:12px">Open ticket</button>
+    </section>
+
+    <section class="panel">
+      <h3 style="margin-top:0">Friends</h3>
+      <div id="pending" class="muted">No pending requests.</div>
+      <div style="margin-top:12px">
+        <div class="row">
+          <input id="fname" placeholder="Add someone by username" style="flex:1;min-width:180px">
+          <button id="fadd">Send request</button>
+        </div>
+        <div class="err" id="ferr"></div>
+      </div>
+      <table style="margin-top:14px">
+        <thead><tr><th>Username</th><th>Status</th><th></th></tr></thead>
+        <tbody id="flist"></tbody>
+      </table>
+    </section>
+
+    <section class="panel">
+      <h3 style="margin-top:0">Your servers</h3>
+      <div class="row">
+        <input id="sname" placeholder="New server name" style="flex:1;min-width:180px">
+        <button class="primary" id="screate">Create</button>
+      </div>
+      <div class="err" id="serr"></div>
+      <div id="slist" class="row" style="margin-top:12px"></div>
+    </section>
+
+    <% } %>
+  </div>
+
+  <script>
+    const ME = <%- JSON.stringify(user || null) %>;
+
+    if (ME) {
+      document.getElementById('open').addEventListener('click', async () => {
+        const err = document.getElementById('err');
+        err.textContent = '';
+        const withList = document.getElementById('with').value
+          .split(',').map(s => s.trim()).filter(Boolean);
+        const res = await fetch('/api/tickets', {
+          method: 'POST', headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({
+            subject: document.getElementById('subject').value,
+            kind: document.getElementById('kind').value,
+            with: withList,
+          }),
+        });
+        const data = await res.json();
+        if (!res.ok) { err.textContent = data.error || 'Could not open it.'; return; }
+        // straight into the ticket's own page
+        location.href = '/ticket/' + data.ticketId;
+      });
+
+      async function loadFriends() {
+        const res = await fetch('/api/friends');
+        const d = await res.json();
+        document.getElementById('flist').innerHTML = d.friends.map(f => `
+          <tr><td>${f.username}</td><td class="muted">${f.status}</td><td></td></tr>`).join('')
+          || '<tr><td colspan="3" class="muted">Nobody added yet.</td></tr>';
+        document.getElementById('pending').innerHTML = d.pending.length
+          ? 'Waiting on you: ' + d.pending.map(p =>
+              `<button data-uid="${p.id}" class="accept">accept ${p.username}</button>`).join(' ')
+          : 'No pending requests.';
+        document.querySelectorAll('.accept').forEach(b => b.addEventListener('click', async () => {
+          await fetch('/api/friends/accept', {
+            method: 'POST', headers: { 'content-type': 'application/json' },
+            body: JSON.stringify({ userId: Number(b.dataset.uid) }),
+          });
+          loadFriends();
+        }));
+      }
+
+      document.getElementById('fadd').addEventListener('click', async () => {
+        const err = document.getElementById('ferr');
+        err.textContent = '';
+        const res = await fetch('/api/friends/request', {
+          method: 'POST', headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ username: document.getElementById('fname').value.trim() }),
+        });
+        const data = await res.json();
+        if (!res.ok) { err.textContent = data.error || 'Could not send it.'; return; }
+        loadFriends();
+      });
+
+      document.getElementById('screate').addEventListener('click', async () => {
+        const err = document.getElementById('serr');
+        err.textContent = '';
+        const res = await fetch('/api/servers', {
+          method: 'POST', headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ name: document.getElementById('sname').value.trim() }),
+        });
+        const data = await res.json();
+        if (!res.ok) { err.textContent = data.error || 'Could not create it.'; return; }
+        location.href = '/chat?server=' + data.serverId;
+      });
+
+      async function loadServers() {
+        const res = await fetch('/api/servers');
+        const d = await res.json();
+        document.getElementById('slist').innerHTML = d.servers.map(s =>
+          `<a class="btn" href="/chat?server=${s.id}&channel=${s.channel_id}">${s.name}</a>`).join('')
+          || '<span class="muted">No servers yet.</span>';
+      }
+
+      loadFriends();
+      loadServers();
+    }
+  </script>
+</body>
+</html>

@@ -1,0 +1,151 @@
+/* halloween.css — restrained autumn layer. Skulls, pumpkins, cobwebs, but
+   nothing that fights the calm feel or the theme colours. */
+
+:root {
+  --accent-grad: var(--accent);
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  padding: 0;
+  background: var(--bg);
+  color: var(--text);
+  font: 15px/1.55 ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+}
+
+a { color: var(--accent); text-decoration: none; }
+a:hover { text-decoration: underline; }
+
+/* ---- layout ---- */
+.shell { max-width: 1080px; margin: 0 auto; padding: 0 20px 64px; }
+
+.topbar {
+  display: flex; align-items: center; gap: 18px;
+  padding: 14px 0;
+}
+.topbar .brand { font-weight: 700; letter-spacing: .02em; }
+.topbar .spacer { flex: 1; }
+.topbar .who { opacity: .8; font-size: 13px; }
+
+.panel {
+  background: var(--panel);
+  border: 1px solid rgba(255,255,255,.06);
+  border-radius: 14px;
+  padding: 18px;
+  margin: 16px 0;
+}
+
+.row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+.grid { display: grid; gap: 14px; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); }
+.center { text-align: center; }
+.muted { opacity: .65; font-size: 13px; }
+.right { margin-left: auto; }
+
+/* ---- buttons: pink is gone, this is a light ocean blue ---- */
+button, .btn {
+  font: inherit;
+  border: 1px solid rgba(255,255,255,.10);
+  background: rgba(255,255,255,.05);
+  color: var(--text);
+  border-radius: 10px;
+  padding: 9px 14px;
+  cursor: pointer;
+}
+button:hover, .btn:hover { background: rgba(255,255,255,.09); }
+button.primary, .btn.primary {
+  background: var(--accent-grad);
+  border-color: transparent;
+  color: #08151a;
+  font-weight: 600;
+}
+button.ghost, .btn.ghost { background: transparent; }
+button:disabled { opacity: .5; cursor: not-allowed; }
+
+input, textarea, select {
+  font: inherit;
+  background: rgba(0,0,0,.25);
+  border: 1px solid rgba(255,255,255,.10);
+  color: var(--text);
+  border-radius: 10px;
+  padding: 9px 11px;
+  width: 100%;
+}
+label { display: block; font-size: 13px; opacity: .75; margin: 10px 0 4px; }
+
+/* ---- profile: banner runs edge to edge, no white divider lines ---- */
+.profile-head { position: relative; margin: 0 -20px 0; }
+.banner {
+  height: 190px;
+  background: var(--accent-grad);
+  background-size: cover;
+  background-position: center;
+  border: 0;
+  border-bottom: 0;
+}
+.banner.animated { animation: drift 18s ease-in-out infinite alternate; }
+@keyframes drift { from { background-position: 0% 50%; } to { background-position: 100% 50%; } }
+
+.avatar-wrap {
+  display: flex; align-items: flex-end; gap: 14px;
+  padding: 0 20px; margin-top: -56px;
+}
+.avatar {
+  width: 112px; height: 112px; border-radius: 50%;
+  background: var(--panel);
+  border: 3px solid var(--bg);
+  object-fit: cover;
+  display: grid; place-items: center;
+  font-size: 40px;
+}
+.avatar.animated { animation: pulse 6s ease-in-out infinite; }
+@keyframes pulse { 0%,100% { transform: scale(1); } 50% { transform: scale(1.03); } }
+
+.name-line { display: flex; align-items: center; gap: 7px; flex-wrap: wrap; }
+.name-line h1 { margin: 0; font-size: 24px; }
+.badge-emoji { font-size: 16px; line-height: 1; }
+.check { color: var(--accent); font-weight: 700; }
+
+/* ---- halloween dressing — small, calm, off to the sides ---- */
+.boo {
+  position: fixed; pointer-events: none; user-select: none;
+  opacity: .16; font-size: 46px; z-index: 0;
+}
+.boo.tl { top: 66px; left: 18px; }
+.boo.tr { top: 84px; right: 20px; }
+.boo.bl { bottom: 20px; left: 26px; font-size: 34px; }
+.boo.br { bottom: 28px; right: 24px; font-size: 38px; }
+@media (max-width: 900px) { .boo { display: none; } }  /* keep phones calm */
+
+.cobweb {
+  position: fixed; top: 0; pointer-events: none; user-select: none;
+  opacity: .12; font-size: 60px; z-index: 0;
+}
+.cobweb.l { left: 0; }
+.cobweb.r { right: 0; transform: scaleX(-1); }
+
+/* ---- wordle-ish grid ---- */
+.guess-grid { display: grid; gap: 6px; justify-content: center; }
+.guess-row { display: flex; gap: 6px; justify-content: center; }
+.tile {
+  width: 42px; height: 42px; display: grid; place-items: center;
+  border: 1px solid rgba(255,255,255,.14); border-radius: 6px;
+  text-transform: uppercase; font-weight: 700;
+}
+.tile.exact { background: #4ade80; color: #06240f; border-color: transparent; }
+.tile.present { background: #fbbf24; color: #2a1a02; border-color: transparent; }
+.tile.absent { background: rgba(255,255,255,.10); }
+
+/* ---- chat ---- */
+.chat-log { display: flex; flex-direction: column; gap: 8px; max-height: 420px; overflow-y: auto; }
+.bubble { background: rgba(255,255,255,.05); border-radius: 12px; padding: 8px 11px; max-width: 70%; }
+.bubble.me { align-self: flex-end; background: rgba(255,255,255,.09); }
+.typing { font-size: 12px; opacity: .6; height: 16px; }
+
+table { width: 100%; border-collapse: collapse; font-size: 14px; }
+th, td { text-align: left; padding: 7px 8px; border-bottom: 1px solid rgba(255,255,255,.07); }
+th { opacity: .6; font-weight: 500; }
+
+.err { color: #ff8f8f; font-size: 13px; min-height: 18px; }
+.ok  { color: #8fe3a5; font-size: 13px; min-height: 18px; }

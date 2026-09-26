@@ -1,0 +1,178 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Chat — ogu</title>
+  <link rel="stylesheet" href="/ogu.css">
+  <style>:root{<%= themeVars %>}</style>
+</head>
+<body data-theme="<%= theme %>">
+  
+  
+
+  <div class="shell" style="max-width:860px">
+    <header class="topbar">
+      <a class="brand" href="/">ogu</a>
+      <a href="/directory">directory</a>
+      <span class="spacer"></span>
+      <% if (user) { %>
+        <a href="/u/<%= user.username %>"><%= user.username %></a>
+        <a href="/settings">settings</a>
+      <% } else { %><a class="btn" href="/login">log in</a><% } %>
+    </header>
+
+    <% if (!user) { %>
+      <section class="panel"><p>Log in to chat.</p><a class="btn primary" href="/login">Log in</a></section>
+    <% } else { %>
+
+    <div class="grid" style="grid-template-columns:220px 1fr">
+      <aside class="panel" style="margin-top:0">
+        <h3 style="margin-top:0">Servers</h3>
+        <div id="servers"></div>
+
+        <h3>People</h3>
+        <div id="people"></div>
+
+        <div style="margin-top:14px">
+          <input id="newServer" placeholder="new server" style="margin-bottom:6px">
+          <button id="createServer" style="width:100%">Create server</button>
+        </div>
+      </aside>
+
+      <section class="panel" style="margin-top:0">
+        <h3 id="where" style="margin-top:0">Pick a conversation</h3>
+        <div class="chat-log" id="log"></div>
+        <div class="typing" id="typing"></div>
+        <div class="row" style="margin-top:10px">
+          <input id="msg" placeholder="Write something…" style="flex:1;min-width:180px">
+          <button class="primary" id="send">Send</button>
+          <button id="pic" title="Send an image or gif">🖼️</button>
+          <button id="sticker" title="Send a sticker">🎃</button>
+        </div>
+        <div class="err" id="err"></div>
+        <p class="muted" style="margin-bottom:0">
+          Typing shows as <em>username is typing</em>. Five identical lines in a row means a
+          five-minute mute.
+        </p>
+      </section>
+    </div>
+
+    <% } %>
+  </div>
+
+  <script>
+    const ME = <%- JSON.stringify(user || null) %>;
+    if (ME) {
+      const params = new URLSearchParams(location.search);
+      let target = { kind: 'none' };
+      if (params.get('channel')) target = { kind: 'channel', id: Number(params.get('channel')) };
+      else if (params.get('dm')) target = { kind: 'dm', id: Number(params.get('dm')) };
+
+      const esc = s => String(s ?? '').replace(/[&<>"']/g, c =>
+        ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+
+      async function loadSidebar() {
+        const [s, f] = await Promise.all([
+          fetch('/api/servers').then(r => r.json()),
+          fetch('/api/friends').then(r => r.json()),
+        ]);
+        document.getElementById('servers').innerHTML = s.servers.map(x =>
+          `<a class="btn" style="display:block;margin-bottom:6px;text-align:left"
+              href="/chat?server=${x.id}&channel=${x.channel_id}">${esc(x.name)}</a>`
+        ).join('') || '<p class="muted" style="font-size:13px">No servers yet.</p>';
+
+        document.getElementById('people').innerHTML = f.friends.map(x =>
+          `<a class="btn" style="display:block;margin-bottom:6px;text-align:left"
+              href="/chat?dm=${x.id}">${esc(x.username)}</a>`
+        ).join('') || '<p class="muted" style="font-size:13px">Add people from a ticket page.</p>';
+      }
+
+      function render(messages, key) {
+        document.getElementById('log').innerHTML = messages.map(m => {
+          const mine = m.username === ME.username || m.from_name === ME.username;
+          const who = m.username || m.from_name || '';
+          const body = m.kind === 'sticker'
+            ? `<span style="font-size:28px">${esc(m.body)}</span>`
+            : (m.kind === 'image' || m.kind === 'gif')
+              ? `<img src="${esc(m.body)}" alt="" style="max-width:220px;border-radius:8px">`
+              : esc(m.body);
+          return `<div class="bubble ${mine ? 'me' : ''}">
+                    <div class="muted" style="font-size:12px">${esc(who)}</div>${body}
+                  </div>`;
+        }).join('');
+        const log = document.getElementById('log');
+        log.scrollTop = log.scrollHeight;
+      }
+
+      async function loadThread() {
+        if (target.kind === 'channel') {
+          const d = await fetch('/api/channel/' + target.id).then(r => r.json());
+          document.getElementById('where').textContent = 'server channel';
+          render(d.messages || [], target.id);
+        } else if (target.kind === 'dm') {
+          const d = await fetch('/api/dm/' + target.id).then(r => r.json());
+          document.getElementById('where').textContent = 'direct message';
+          render(d.messages || [], target.id);
+        }
+      }
+
+      function push(body, kind = 'text') {
+        const err = document.getElementById('err');
+        err.textContent = '';
+        if (target.kind === 'none') { err.textContent = 'Pick a conversation first.'; return; }
+        window.ogu.send(target.kind === 'dm'
+          ? { type: 'dm', toUserId: target.id, body, kind }
+          : { type: 'channel', channelId: target.id, body, kind });
+        // echo immediately so it feels like it sent, without waiting for the round trip
+        const log = document.getElementById('log');
+        const b = document.createElement('div');
+        b.className = 'bubble me';
+        b.innerHTML = `<div class="muted" style="font-size:12px">you</div>`
+          + (kind === 'sticker' ? `<span style="font-size:28px">${esc(body)}</span>`
+             : (kind === 'image' || kind === 'gif')
+               ? `<img src="${esc(body)}" alt="" style="max-width:220px;border-radius:8px">`
+               : esc(body));
+        log.appendChild(b);
+        log.scrollTop = log.scrollHeight;
+      }
+
+      document.getElementById('send').addEventListener('click', () => {
+        const input = document.getElementById('msg');
+        const v = input.value.trim();
+        if (!v) return;
+        push(v);
+        input.value = '';
+      });
+      document.getElementById('msg').addEventListener('keydown', e => {
+        if (e.key === 'Enter') document.getElementById('send').click();
+      });
+      document.getElementById('msg').addEventListener('input', () => {
+        window.ogu.send({ type: 'typing', toUserId: target.kind === 'dm' ? target.id : undefined, scope: target.kind });
+      });
+      document.getElementById('sticker').addEventListener('click', () => push('🎃', 'sticker'));
+      document.getElementById('pic').addEventListener('click', () => {
+        const url = prompt('Image or gif URL');
+        if (url) push(url, /\.gif($|\?)/i.test(url) ? 'gif' : 'image');
+      });
+
+      document.getElementById('createServer').addEventListener('click', async () => {
+        const name = document.getElementById('newServer').value.trim();
+        if (!name) return;
+        const res = await fetch('/api/servers', {
+          method: 'POST', headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ name }),
+        });
+        const data = await res.json();
+        if (!res.ok) { document.getElementById('err').textContent = data.error || 'Could not create it.'; return; }
+        location.href = '/chat?server=' + data.serverId + '&channel=' + data.serverId;
+      });
+
+      loadSidebar();
+      loadThread();
+      setInterval(loadThread, 4000);  // keeps threads current without a refresh
+    }
+  </script>
+  <script src="/app.js"></script>
+</body>
+</html>

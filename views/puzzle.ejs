@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Daily — ogu</title>
+  <link rel="stylesheet" href="/ogu.css">
+  <style>:root{<%= themeVars %>}</style>
+</head>
+<body data-theme="<%= theme %>">
+  
+  
+
+  <div class="shell" style="max-width:560px">
+    <header class="topbar">
+      <a class="brand" href="/">ogu</a>
+      <span class="spacer"></span>
+      <% if (user) { %><a href="/u/<%= user.username %>"><%= user.username %></a><% } else { %><a href="/login">log in</a><% } %>
+    </header>
+
+    <section class="panel">
+      <h2 style="margin-top:0">Today's word</h2>
+      <p class="muted">
+        One word a day, the same for everyone. Solve it and you get a few credits —
+        once, so it can't be farmed.
+      </p>
+
+      <% if (!user) { %>
+        <p>Log in to play.</p><a class="btn primary" href="/login">Log in</a>
+      <% } else { %>
+        <div id="status" class="muted">Loading…</div>
+        <div class="guess-grid" id="grid" style="margin-top:14px"></div>
+        <div class="row" style="margin-top:14px;justify-content:center">
+          <input id="guess" maxlength="12" placeholder="your guess" style="max-width:200px"
+                 autocomplete="off" autocapitalize="off">
+          <button class="primary" id="send">Guess</button>
+        </div>
+        <div class="err center" id="err"></div>
+      <% } %>
+    </section>
+  </div>
+
+  <script>
+    const ME = <%- JSON.stringify(user || null) %>;
+    let length = 5;
+
+    function render(attempts) {
+      document.getElementById('grid').innerHTML = attempts.map(row =>
+        '<div class="guess-row">' + row.map(t =>
+          `<div class="tile ${t.state}">${t.letter}</div>`).join('') + '</div>'
+      ).join('');
+    }
+
+    if (ME) {
+      const attempts = [];
+      fetch('/api/puzzle').then(r => r.json()).then(d => {
+        length = d.wordLength;
+        document.getElementById('guess').maxLength = length;
+        document.getElementById('status').textContent = d.played.wordle
+          ? 'You already solved today. Come back tomorrow.'
+          : `${length} letters. Same word for everybody.`;
+        if (d.played.wordle) document.getElementById('send').disabled = true;
+      });
+
+      document.getElementById('send').addEventListener('click', async () => {
+        const err = document.getElementById('err');
+        err.textContent = '';
+        const guess = document.getElementById('guess').value.toLowerCase().trim();
+        const res = await fetch('/api/puzzle/guess', {
+          method: 'POST', headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ guess }),
+        });
+        const data = await res.json();
+        if (!res.ok) { err.textContent = data.error || 'Try again.'; return; }
+        attempts.push(guess.split('').map((letter, i) => ({ letter, state: data.marks[i] })));
+        render(attempts);
+        document.getElementById('guess').value = '';
+        if (data.won) {
+          document.getElementById('status').textContent = `Solved. +${data.reward} credits.`;
+          document.getElementById('send').disabled = true;
+        }
+      });
+      document.getElementById('guess').addEventListener('keydown', e => {
+        if (e.key === 'Enter') document.getElementById('send').click();
+      });
+    }
+  </script>
+</body>
+</html>

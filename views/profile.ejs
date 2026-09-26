@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title><%= viewed %> — ogu</title>
+  <link rel="stylesheet" href="/ogu.css">
+  <style>:root{<%= themeVars %>}</style>
+</head>
+<body data-theme="<%= theme %>" data-viewed="<%= viewed %>">
+
+  
+  
+
+  <div class="shell">
+    <header class="topbar">
+      <a class="brand" href="/">ogu</a>
+      <a href="/directory">directory</a>
+      <a href="/leaderboard">leaderboard</a>
+      <span class="spacer"></span>
+      <% if (user) { %>
+        <a href="/u/<%= user.username %>"><%= user.username %></a>
+        <span class="muted"><%= user.credits %> credits</span>
+        <a href="/settings">settings</a>
+      <% } else { %>
+        <a class="btn" href="/login">log in</a>
+      <% } %>
+    </header>
+
+    <div class="p-head">
+      <div class="p-banner" id="banner"></div>
+    </div>
+
+    <div class="p-id">
+      <div class="p-avatar" id="avatar">?</div>
+      <div>
+        <div class="p-name">
+          <h1 id="uname"><%= viewed %></h1>
+          <span id="badges"></span>
+          <span class="check" id="founder" title="Founding account" hidden>✔</span>
+        </div>
+        <div class="muted" id="bio"></div>
+      </div>
+      <div class="p-actions">
+        <button class="primary" id="goTicket" hidden>Go to ticket</button>
+        <button id="addFriend">Add friend</button>
+      </div>
+    </div>
+
+    <div class="grid" style="margin-top:20px">
+      <div class="panel"><label>Credits</label><div id="credits" style="font-size:22px">—</div></div>
+      <div class="panel"><label>Price</label><div id="price" style="font-size:22px">—</div>
+        <p class="muted" style="margin:4px 0 0">USD, when listed</p></div>
+      <div class="panel"><label>Joined</label><div id="joined" style="font-size:15px">—</div></div>
+    </div>
+  </div>
+
+  <script src="/app.js"></script>
+</body>
+</html>

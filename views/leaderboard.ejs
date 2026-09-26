@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Leaderboard — ogu</title>
+  <link rel="stylesheet" href="/ogu.css">
+  <style>:root{<%= themeVars %>}</style>
+</head>
+<body data-theme="<%= theme %>">
+  
+  
+  
+
+  <div class="shell">
+    <header class="topbar">
+      <a class="brand" href="/">ogu</a>
+      <a href="/directory">directory</a>
+      <a href="/leaderboard">leaderboard</a>
+      <span class="spacer"></span>
+      <% if (user) { %>
+        <a href="/u/<%= user.username %>"><%= user.username %></a>
+        <a href="/settings">settings</a>
+      <% } else { %>
+        <a class="btn" href="/login">log in</a>
+      <% } %>
+    </header>
+
+    <section class="panel">
+      <h2 style="margin-top:0">First account</h2>
+      <p id="first" class="muted">Loading…</p>
+    </section>
+
+    <section class="panel">
+      <h3 style="margin-top:0">The first five</h3>
+      <p class="muted">These accounts carry the checkmark permanently.</p>
+      <table>
+        <thead><tr><th>#</th><th>Username</th><th>Joined</th></tr></thead>
+        <tbody id="founders"></tbody>
+      </table>
+    </section>
+  </div>
+
+  <script>
+    fetch('/api/leaderboard').then(r => r.json()).then(d => {
+      document.getElementById('first').innerHTML = d.first
+        ? `<a href="/u/${encodeURIComponent(d.first.username)}"><strong>${d.first.username}</strong></a>
+           registered ${new Date(d.first.created_at).toLocaleString()}`
+        : 'Nobody yet. That could be you.';
+      document.getElementById('founders').innerHTML = d.founders.map((f, i) => `
+        <tr>
+          <td>${i + 1}</td>
+          <td><a href="/u/${encodeURIComponent(f.username)}">${f.username}</a>
+              ${i < 5 ? '<span class="check">✔</span>' : ''}</td>
+          <td class="muted">${new Date(f.created_at).toLocaleDateString()}</td>
+        </tr>`).join('');
+    });
+  </script>
+  <script src="/app.js"></script>
+</body>
+</html>

@@ -1,0 +1,100 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Ticket #<%= ticketId %> — ogu</title>
+  <link rel="stylesheet" href="/ogu.css">
+  <style>:root{<%= themeVars %>}</style>
+</head>
+<body data-theme="<%= theme %>" data-ticket="<%= ticketId %>">
+  
+  
+
+  <div class="shell" style="max-width:760px">
+    <header class="topbar">
+      <a class="brand" href="/">ogu</a>
+      <span class="spacer"></span>
+      <% if (user) { %>
+        <a href="/u/<%= user.username %>"><%= user.username %></a>
+        <a href="/settings">settings</a>
+      <% } else { %><a href="/login">log in</a><% } %>
+    </header>
+
+    <section class="panel">
+      <div class="row">
+        <h2 id="subject" style="margin:0">Loading…</h2>
+        <span class="muted right" id="kind"></span>
+      </div>
+      <div class="muted" id="seats"></div>
+    </section>
+
+    <section class="panel">
+      <div class="chat-log" id="log" style="max-height:520px"></div>
+      <div class="typing" id="typing"></div>
+      <div class="row" style="margin-top:10px">
+        <input id="msg" placeholder="Write about the ticket…" style="flex:1;min-width:200px">
+        <button class="primary" id="send">Send</button>
+      </div>
+      <div class="err" id="err"></div>
+    </section>
+  </div>
+
+  <script>
+    const TICKET = Number(document.body.dataset.ticket);
+    let lastCount = 0;
+
+    async function load(quiet) {
+      const res = await fetch('/api/tickets/' + TICKET);
+      if (!res.ok) {
+        document.getElementById('subject').textContent = 'You are not on this ticket.';
+        return;
+      }
+      const d = await res.json();
+      document.getElementById('subject').textContent = d.ticket.subject;
+      document.getElementById('kind').textContent = d.ticket.kind + ' · ' + d.ticket.status;
+      document.getElementById('seats').textContent =
+        'Seats (' + d.members.length + '/3): ' + d.members.map(m => m.username).join(', ');
+
+      const fresh = d.messages.length !== lastCount;
+      if (fresh || !quiet) {
+        document.getElementById('log').innerHTML = d.messages.map(m => `
+          <div class="bubble">
+            <div class="muted" style="font-size:12px">${m.username}</div>
+            ${escapeHtml(m.body)}
+          </div>`).join('');
+        document.getElementById('log').scrollTop = 1e6;
+        lastCount = d.messages.length;
+      }
+    }
+
+    function escapeHtml(s) {
+      return String(s).replace(/[&<>"']/g, c =>
+        ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+    }
+
+    document.getElementById('send').addEventListener('click', async () => {
+      const input = document.getElementById('msg');
+      const err = document.getElementById('err');
+      err.textContent = '';
+      const body = input.value.trim();
+      if (!body) return;
+      const res = await fetch('/api/tickets/' + TICKET + '/messages', {
+        method: 'POST', headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ body }),
+      });
+      const data = await res.json();
+      if (!res.ok) { err.textContent = data.error || 'Could not send it.'; return; }
+      input.value = '';
+      load();
+    });
+    document.getElementById('msg').addEventListener('keydown', e => {
+      if (e.key === 'Enter') document.getElementById('send').click();
+    });
+
+    // poll just this ticket so it behaves like a live thread without a reload
+    load();
+    setInterval(() => load(true), 3000);
+  </script>
+</body>
+</html>

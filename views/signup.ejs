@@ -1,0 +1,162 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Claim a username — ogu</title>
+  <link rel="stylesheet" href="/ogu.css">
+  <style>
+  :root{<%= themeVars %>}
+.theme-grid{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px}
+  .theme-btn{display:flex;align-items:center;gap:8px;padding:8px 13px;border-radius:999px;
+    border:1px solid rgba(255,255,255,.14);background:rgba(255,255,255,.04);color:var(--text);
+    font:inherit;font-size:13.5px;cursor:pointer;transition:.15s}
+  .theme-btn:hover{background:rgba(255,255,255,.09)}
+  .theme-btn.on{border-color:transparent;font-weight:600;color:#08151a}
+  .swatch{width:13px;height:13px;border-radius:50%;display:inline-block}
+  </style>
+</head>
+<body data-theme="<%= theme %>">
+  
+  
+  
+  
+  
+
+  <div class="shell" style="max-width:480px">
+    <header class="topbar">
+      <a class="brand" href="/">ogu</a>
+      <span class="spacer"></span>
+      <a href="/login">already have a name?</a>
+    </header>
+
+    <section class="panel">
+      <h2 style="margin-top:0">Claim a username</h2>
+      <p class="muted">One to twenty characters. Letters, numbers and <code>. / - _</code> only.</p>
+
+      <label for="username">Username</label>
+      <input id="username" maxlength="20" autocomplete="off" autofocus
+             placeholder="your.name_here">
+      <div id="nameCheck" style="min-height:20px;margin-top:6px;font-size:13px"></div>
+
+      <label for="password">Password</label>
+      <input id="password" type="password" autocomplete="new-password">
+      <p class="muted" style="margin-top:4px">Six characters minimum. No email required, so keep it safe.</p>
+
+      <label>Theme</label>
+      <div class="theme-grid" id="themeGrid">
+        <% themes.forEach(t => { %>
+          <button type="button" class="theme-btn" data-id="<%= t.id %>">
+            <span class="swatch" style="background:<%= t.accent2 ? 'linear-gradient(135deg,' + t.accent + ',' + t.accent2 + ')' : t.accent %>"></span>
+            <%= t.name %>
+          </button>
+        <% }); %>
+      </div>
+
+      <div class="err" id="err"></div>
+
+      <div class="row" style="margin-top:12px">
+        <button class="primary" id="go">Claim it</button>
+      </div>
+    </section>
+  </div>
+
+  <script>
+    const THEMES = <%- JSON.stringify(themes) %>;
+
+    function applyTheme(id, gradients = true) {
+      const t = THEMES.find(x => x.id === id) || THEMES[0];
+      const a2 = t.accent2 || t.accent;
+      const s = document.documentElement.style;
+      s.setProperty('--bg', t.bg);
+      s.setProperty('--panel', t.panel);
+      s.setProperty('--text', t.text);
+      s.setProperty('--accent', t.accent);
+      s.setProperty('--accent2', a2);
+      s.setProperty('--accent-grad', gradients ? `linear-gradient(135deg, ${t.accent}, ${a2})` : t.accent);
+    }
+
+    // preview immediately, and carry the choice into the new account
+    let chosen = '<%= theme %>';
+    function paint(){
+      const t = THEMES.find(x => x.id === chosen) || THEMES[0];
+      const a2 = t.accent2 || t.accent;
+      document.querySelectorAll('.theme-btn').forEach(b => {
+        const on = b.dataset.id === chosen;
+        b.classList.toggle('on', on);
+        b.style.background = on
+          ? 'linear-gradient(135deg,' + t.accent + ',' + a2 + ')' : 'rgba(255,255,255,.04)';
+      });
+    }
+    document.querySelectorAll('.theme-btn').forEach(b => {
+      b.addEventListener('click', () => { chosen = b.dataset.id; applyTheme(chosen); paint(); });
+    });
+    paint();
+
+    async function submit() {
+      const err = document.getElementById('err');
+      err.textContent = '';
+      const res = await fetch('/api/signup', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          username: document.getElementById('username').value.trim(),
+          password: document.getElementById('password').value,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) { err.textContent = data.error || 'Could not sign up.'; return; }
+      const theme = chosen;
+      await fetch('/api/settings', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ theme }),
+      });
+      location.href = '/u/' + encodeURIComponent(document.getElementById('username').value.trim());
+    }
+
+    document.getElementById('go').addEventListener('click', submit);
+    document.addEventListener('keydown', e => { if (e.key === 'Enter') submit(); });
+  
+    /* Automatyczne sprawdzanie nazwy — odpytuje serwer w trakcie pisania. */
+    (function () {
+      var box = document.getElementById('username');
+      var out = document.getElementById('nameCheck');
+      if (!box || !out) return;
+      var timer = null;
+      var last = '';
+
+      function say(text, color) {
+        out.textContent = text;
+        out.style.color = color || '';
+      }
+
+      box.addEventListener('input', function () {
+        var v = box.value.trim();
+        clearTimeout(timer);
+        if (!v) { say(''); return; }
+        if (!/^[A-Za-z0-9._/-]{1,20}$/.test(v)) {
+          say('1 to 20 characters: letters, numbers and . / - _', '#ff9090');
+          return;
+        }
+        say('Checking\u2026', '');
+        timer = setTimeout(function () {
+          if (v === last) return;
+          last = v;
+          fetch('/api/check/' + encodeURIComponent(v), { credentials: 'same-origin' })
+            .then(function (r) { return r.json(); })
+            .then(function (d) {
+              if (box.value.trim() !== v) return;
+              if (d.available) {
+                say('Available', '#8fe3a5');
+              } else {
+                say(d.reason || 'Not available', '#ff9090');
+              }
+            })
+            .catch(function () { say('Could not check. Try again.', '#ff9090'); });
+        }, 220);
+      });
+    })();
+  </script>
+</body>
+</html>

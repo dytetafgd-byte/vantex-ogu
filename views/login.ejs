@@ -1,0 +1,132 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Log in — ogu</title>
+  <link rel="stylesheet" href="/ogu.css">
+  <style>
+  :root{<%= themeVars %>}
+  .theme-grid{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px}
+  .theme-btn{
+    display:flex;align-items:center;gap:8px;padding:8px 13px;border-radius:999px;
+    border:1px solid rgba(255,255,255,.14);background:rgba(255,255,255,.04);
+    color:var(--text);font:inherit;font-size:13.5px;cursor:pointer;transition:.15s
+  }
+  .theme-btn:hover{background:rgba(255,255,255,.09)}
+  .theme-btn.on{border-color:transparent;font-weight:600;color:#08151a}
+  .swatch{width:13px;height:13px;border-radius:50%;display:inline-block}
+  </style>
+</head>
+<body data-theme="<%= theme %>">
+  <div class="shell" style="max-width:480px">
+    <header class="topbar">
+      <a class="brand" href="/">ogu</a>
+      <span class="spacer"></span>
+      <a href="/signup">need a name?</a>
+    </header>
+
+    <section class="panel">
+      <h2 style="margin-top:0">Log in</h2>
+      <p class="muted">Use the account you already have — no email involved.</p>
+
+      <label for="username">Username</label>
+      <input id="username" autocomplete="username" autofocus>
+
+      <label for="password">Password</label>
+      <input id="password" type="password" autocomplete="current-password">
+
+      <div class="err" id="err"></div>
+
+      <div class="row" style="margin-top:12px">
+        <button class="primary" id="go">Log in</button>
+        <a class="muted right" href="/signup">or claim a new name</a>
+      </div>
+    </section>
+
+    <div class="panel">
+      <label>Theme</label>
+      <div class="theme-grid" id="themeGrid">
+        <% themes.forEach(t => { %>
+          <button type="button" class="theme-btn" data-id="<%= t.id %>">
+            <span class="swatch" style="background:<%= t.accent2 ? 'linear-gradient(135deg,' + t.accent + ',' + t.accent2 + ')' : t.accent %>"></span>
+            <%= t.name %>
+          </button>
+        <% }); %>
+      </div>
+      <p class="muted" style="margin-bottom:0">
+        Tap one to preview it instantly. Once you're logged in, the theme on your account
+        is the one every page uses.
+      </p>
+    </div>
+  </div>
+
+  <script>
+    const THEMES = <%- JSON.stringify(themes) %>;
+
+    function applyTheme(id, gradients = true) {
+      const t = THEMES.find(x => x.id === id) || THEMES[0];
+      const a2 = t.accent2 || t.accent;
+      const s = document.documentElement.style;
+      s.setProperty('--bg', t.bg);
+      s.setProperty('--panel', t.panel);
+      s.setProperty('--text', t.text);
+      s.setProperty('--accent', t.accent);
+      s.setProperty('--accent2', a2);
+      s.setProperty('--accent-grad', gradients ? 'linear-gradient(135deg,' + t.accent + ',' + a2 + ')' : t.accent);
+      document.querySelectorAll('.theme-btn').forEach(b => {
+        b.classList.toggle('on', b.dataset.id === id);
+        if (b.dataset.id === id) {
+          b.style.background = gradients ? 'linear-gradient(135deg,' + t.accent + ',' + a2 + ')' : t.accent;
+        } else {
+          b.style.background = 'rgba(255,255,255,.04)';
+        }
+      });
+    }
+
+    document.querySelectorAll('.theme-btn').forEach(b => {
+      b.addEventListener('click', () => {
+        applyTheme(b.dataset.id);
+        sessionStorage.setItem('themePreview', b.dataset.id);
+      });
+    });
+
+    const preview = sessionStorage.getItem('themePreview');
+    applyTheme(preview || '<%= theme %>');
+
+    async function submit() {
+      const err = document.getElementById('err');
+      err.textContent = '';
+      const res = await fetch('/api/login', {
+        method: 'POST',
+        credentials: 'same-origin',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          username: document.getElementById('username').value,
+          password: document.getElementById('password').value,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) { err.textContent = data.error || 'Could not log in.'; return; }
+      // theme first, then verify the session really stuck before redirecting
+      if (preview) {
+        await fetch('/api/settings', {
+          method: 'POST', credentials: 'same-origin',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ theme: preview }),
+        });
+      }
+
+      const who = await fetch('/api/me', { credentials: 'same-origin' }).then(r => r.json());
+      if (!who || !who.user) {
+        err.textContent = 'Cookie was blocked — allow cookies for localhost and try again.';
+        return;
+      }
+      location.href = '/u/' + encodeURIComponent(who.user.username);
+    }
+
+    document.getElementById('go').addEventListener('click', submit);
+    document.addEventListener('keydown', e => { if (e.key === 'Enter') submit(); });
+  </script>
+</body>
+</html>

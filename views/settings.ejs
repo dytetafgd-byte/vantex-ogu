@@ -1,0 +1,246 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Settings — ogu</title>
+  <link rel="stylesheet" href="/ogu.css">
+  <style>:root{<%= themeVars %>}</style>
+</head>
+<body data-theme="<%= theme %>">
+  
+  
+
+  <div class="shell" style="max-width:640px">
+    <header class="topbar">
+      <a class="brand" href="/">ogu</a>
+      <span class="spacer"></span>
+      <a href="/">home</a>
+      <% if (user) { %><a href="/u/<%= user.username %>">my profile</a><% } %>
+    </header>
+
+    <% if (!user) { %>
+      <section class="panel"><p>Log in to change your settings.</p><a class="btn primary" href="/login">Log in</a></section>
+    <% } else { %>
+
+    <section class="panel">
+      <h3 style="margin-top:0">Theme</h3>
+      <p class="muted">Applies everywhere — profile, directory, leaderboard, tickets, admin.</p>
+      <select id="theme">
+        <% themes.forEach(t => { %>
+          <option value="<%= t.id %>" <%= t.id === theme ? 'selected' : '' %>><%= t.name %></option>
+        <% }); %>
+      </select>
+
+      <label style="margin-top:14px">
+        <input type="checkbox" id="gradients" style="width:auto" <%= gradients ? 'checked' : '' %>>
+        Use gradients
+      </label>
+    </section>
+
+    <section class="panel">
+      <h3 style="margin-top:0">Profile</h3>
+      <label for="bio">Bio</label>
+      <textarea id="bio" rows="3" maxlength="300"></textarea>
+      <label for="avatar">Avatar image URL</label>
+      <input id="avatar" placeholder="https://…">
+      <label for="banner">Banner image URL</label>
+      <input id="banner" placeholder="https://…">
+
+      <div class="row" style="margin-top:14px">
+        <button id="fx-avatar">Animated avatar</button>
+        <button id="fx-banner">Animated banner</button>
+        <span class="muted right">Owned upgrades can be switched on here.</span>
+      </div>
+      <div class="err" id="fxErr"></div>
+      <div class="ok" id="saved"></div>
+      <button class="primary" id="save" style="margin-top:10px">Save profile</button>
+    </section>
+
+    <section class="panel">
+      <h3 style="margin-top:0">Badges</h3>
+      <p class="muted">Buying a badge adds its emoji next to your name. Prices change; check the shop.</p>
+      <table>
+        <thead><tr><th></th><th>Badge</th><th>Price</th><th></th></tr></thead>
+        <tbody id="shop"></tbody>
+      </table>
+    </section>
+
+    <section class="panel">
+      <h3 style="margin-top:0">Animated upgrades</h3>
+      <p class="muted">Make your profile livelier. These are one-off purchases.</p>
+      <div class="row">
+        <button id="buy-avatar">Buy animated avatar</button>
+        <button id="buy-banner">Buy animated banner</button>
+      </div>
+      <div class="err" id="buyErr"></div>
+    </section>
+
+    <section class="panel">
+      <h3 style="margin-top:0">Password</h3>
+      <label>Current password</label>
+      <input id="cur" type="password">
+      <label>New password</label>
+      <input id="next" type="password">
+      <div class="err" id="pwErr"></div>
+      <button class="primary" id="pw" style="margin-top:10px">Change password</button>
+    </section>
+
+    <section class="panel">
+      <h3 style="margin-top:0">Delete profile</h3>
+      <p class="muted">This removes your username, messages, tickets and badges. It can't be undone.</p>
+      <label>Password</label>
+      <input id="delpw" type="password">
+      <div class="err" id="delErr"></div>
+      <button id="del" style="margin-top:10px">Delete my account</button>
+    </section>
+
+    <section class="panel">
+      <h3 style="margin-top:0">Daily reward</h3>
+      <p class="muted">Five credits, once a day.</p>
+      <button class="primary" id="reward">Claim 5 credits</button>
+      <div class="ok" id="rewardMsg"></div>
+    </section>
+
+    <% } %>
+  </div>
+
+  <script>
+    const ME = <%- JSON.stringify(user || null) %>;
+    const THEMES = <%- JSON.stringify(themes) %>;
+
+    function applyTheme(id, gradients) {
+      const t = THEMES.find(x => x.id === id) || THEMES[0];
+      const a2 = t.accent2 || t.accent;
+      const s = document.documentElement.style;
+      s.setProperty('--bg', t.bg);
+      s.setProperty('--panel', t.panel);
+      s.setProperty('--text', t.text);
+      s.setProperty('--accent', t.accent);
+      s.setProperty('--accent2', a2);
+      s.setProperty('--accent-grad', gradients ? `linear-gradient(135deg, ${t.accent}, ${a2})` : t.accent);
+    }
+
+    async function saveTheme() {
+      const theme = document.getElementById('theme').value;
+      const gradients = document.getElementById('gradients').checked;
+      applyTheme(theme, gradients);
+      await fetch('/api/settings', {
+        method: 'POST', headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ theme, gradients }),
+      });
+    }
+
+    if (ME) {
+      document.getElementById('theme').addEventListener('change', saveTheme);
+      document.getElementById('gradients').addEventListener('change', saveTheme);
+
+      document.getElementById('bio').value = ME.bio || '';
+      document.getElementById('avatar').value = ME.avatar || '';
+      document.getElementById('banner').value = ME.banner || '';
+
+      document.getElementById('save').addEventListener('click', async () => {
+        await fetch('/api/settings', {
+          method: 'POST', headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({
+            bio: document.getElementById('bio').value,
+            avatar: document.getElementById('avatar').value,
+            banner: document.getElementById('banner').value,
+          }),
+        });
+        document.getElementById('saved').textContent = 'Saved.';
+      });
+
+      // animated avatar / banner: errors here when the entitlement isn't owned
+      async function setFx(which, on) {
+        const err = document.getElementById('fxErr');
+        err.textContent = '';
+        const res = await fetch('/api/fx', {
+          method: 'POST', headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ which, on }),
+        });
+        const data = await res.json();
+        if (!res.ok) { err.textContent = data.error || 'Not allowed.'; return; }
+        location.reload();
+      }
+      document.getElementById('fx-avatar').addEventListener('click', () => setFx('avatar_fx', true));
+      document.getElementById('fx-banner').addEventListener('click', () => setFx('banner_fx', true));
+
+      async function buy(which) {
+        const err = document.getElementById('buyErr');
+        err.textContent = '';
+        const res = await fetch('/api/fx/buy', {
+          method: 'POST', headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ which }),
+        });
+        const data = await res.json();
+        if (!res.ok) { err.textContent = data.error || 'Could not buy.'; return; }
+        location.reload();
+      }
+      document.getElementById('buy-avatar').addEventListener('click', () => buy('avatar_fx'));
+      document.getElementById('buy-banner').addEventListener('click', () => buy('banner_fx'));
+
+      fetch('/api/badges').then(r => r.json()).then(d => {
+        const owned = new Set(ME.badges.map(b => b.slug));
+        document.getElementById('shop').innerHTML = d.badges.map(b => `
+          <tr>
+            <td>${b.emoji}</td>
+            <td>${b.label}${b.custom ? ' <span class="muted">(custom)</span>' : ''}</td>
+            <td>${b.price}</td>
+            <td>${owned.has(b.slug)
+                  ? '<span class="muted">owned</span>'
+                  : `<button data-slug="${b.slug}">Buy</button>`}</td>
+          </tr>`).join('');
+        document.querySelectorAll('#shop button[data-slug]').forEach(btn => {
+          btn.addEventListener('click', async () => {
+            const res = await fetch('/api/badges/buy', {
+              method: 'POST', headers: { 'content-type': 'application/json' },
+              body: JSON.stringify({ slug: btn.dataset.slug }),
+            });
+            const data = await res.json();
+            if (!res.ok) { alert(data.error || 'Could not buy.'); return; }
+            location.reload();
+          });
+        });
+      });
+
+      document.getElementById('pw').addEventListener('click', async () => {
+        const err = document.getElementById('pwErr');
+        err.textContent = '';
+        const res = await fetch('/api/password', {
+          method: 'POST', headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({
+            current: document.getElementById('cur').value,
+            next: document.getElementById('next').value,
+          }),
+        });
+        const data = await res.json();
+        err.style.color = res.ok ? '#8fe3a5' : '#ff8f8f';
+        err.textContent = res.ok ? 'Password changed.' : (data.error || 'Could not change it.');
+      });
+
+      document.getElementById('del').addEventListener('click', async () => {
+        if (!confirm('Delete your account for good?')) return;
+        const err = document.getElementById('delErr');
+        err.textContent = '';
+        const res = await fetch('/api/delete-profile', {
+          method: 'POST', headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ password: document.getElementById('delpw').value }),
+        });
+        const data = await res.json();
+        if (!res.ok) { err.textContent = data.error || 'Could not delete.'; return; }
+        location.href = '/';
+      });
+
+      document.getElementById('reward').addEventListener('click', async () => {
+        const msg = document.getElementById('rewardMsg');
+        const res = await fetch('/api/reward', { method: 'POST' });
+        const data = await res.json();
+        msg.style.color = res.ok ? '#8fe3a5' : '#ff8f8f';
+        msg.textContent = res.ok ? `+${data.credits} credits.` : (data.error || 'No reward.');
+      });
+    }
+  </script>
+  <script src="/app.js"></script>
+</body>
+</html>
